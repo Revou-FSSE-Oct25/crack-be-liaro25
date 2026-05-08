@@ -50,6 +50,7 @@ export class AuthService {
         phone: true,
         address: true,
         dateOfBirth: true,
+        role: true,
         createdAt: true,
       },
     });
@@ -68,18 +69,23 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Login failed. Please check your email and password.');
+      throw new UnauthorizedException(
+        'Login failed. Please check your email and password.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(body.password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Login failed. Please check your email and password.');
+      throw new UnauthorizedException(
+        'Login failed. Please check your email and password.',
+      );
     }
 
     const payload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
@@ -92,6 +98,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        role: user.role,
       },
     };
   }
@@ -106,6 +113,7 @@ export class AuthService {
         phone: true,
         address: true,
         dateOfBirth: true,
+        role: true,
         createdAt: true,
       },
     });
