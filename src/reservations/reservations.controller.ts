@@ -30,7 +30,6 @@ export class ReservationsController {
       guestPhone?: string;
       reservationDate: string;
       startTime: string;
-      endTime: string;
       guestCount: number;
     },
   ) {
