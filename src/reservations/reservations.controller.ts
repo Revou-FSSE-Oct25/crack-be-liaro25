@@ -54,9 +54,9 @@ export class ReservationsController {
     return this.reservationsService.findOne(id);
   }
 
-    @Patch(':id')
-    @UseGuards(JwtAuthGuard)
-    update(
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  update(
     @Request() req: any,
     @Param('id') id: string,
     @Body()

@@ -12,9 +12,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('register')
   register(
@@ -45,8 +43,6 @@ export class AuthController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   getProfile(@Request() req: any) {
-    return this.authService.getProfile(
-      req.user.userId,
-    );
+    return this.authService.getProfile(req.user.userId);
   }
 }

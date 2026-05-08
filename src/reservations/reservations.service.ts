@@ -20,65 +20,174 @@ export class ReservationsService {
     return date.toTimeString().slice(0, 5);
   }
 
-  async create(
-    body: {
-      guestName?: string;
-      guestEmail?: string;
-      guestPhone?: string;
-      reservationDate: string;
-      startTime: string;
-      guestCount: number;
-    },
-    userId?: string,
-  ) {
-    const reservationDate = new Date(body.reservationDate);
-    const today = new Date();
+  private findBestTableCombination(
+    tables: { id: string; capacity: number }[],
+    guestCount: number,
+  ): { id: string; capacity: number }[] | null {
+    const sortedTables = [...tables].sort((a, b) => a.capacity - b.capacity);
 
-    today.setHours(0, 0, 0, 0);
-    reservationDate.setHours(0, 0, 0, 0);
+    let bestCombination: { id: string; capacity: number }[] | null = null;
+    let bestExtraSeats = Infinity;
 
-    if (reservationDate < today) {
-      throw new BadRequestException('Reservation date cannot be in the past');
-    }
+    const findCombination = (
+      index: number,
+      currentCombination: { id: string; capacity: number }[],
+      currentCapacity: number,
+    ) => {
+      if (currentCapacity >= guestCount) {
+        const extraSeats = currentCapacity - guestCount;
 
-    let guestName = body.guestName;
-    let guestEmail = body.guestEmail;
-    let guestPhone = body.guestPhone;
+        if (
+          extraSeats < bestExtraSeats ||
+          (extraSeats === bestExtraSeats &&
+            currentCombination.length < (bestCombination?.length ?? Infinity))
+        ) {
+          bestCombination = currentCombination;
+          bestExtraSeats = extraSeats;
+        }
 
-    if (userId) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (user) {
-        guestName = guestName ?? user.name;
-        guestEmail = guestEmail ?? user.email;
-        guestPhone = guestPhone ?? user.phone ?? '';
+        return;
       }
-    }
 
-    if (!guestName || !guestEmail || !guestPhone) {
-      throw new BadRequestException(
-        'Guest name, email, and phone are required',
-      );
-    }
+      for (let i = index; i < sortedTables.length; i++) {
+        findCombination(
+          i + 1,
+          [...currentCombination, sortedTables[i]],
+          currentCapacity + sortedTables[i].capacity,
+        );
+      }
+    };
 
-    const endTime = this.calculateEndTime(body.startTime);
+    findCombination(0, [], 0);
 
-    return this.prisma.reservation.create({
-      data: {
-        userId: userId ?? null,
-        guestName,
-        guestEmail,
-        guestPhone,
-        reservationCode: `CRACK-${Date.now()}`,
-        reservationDate,
-        startTime: body.startTime,
-        endTime,
-        guestCount: body.guestCount,
-      },
-    });
+    return bestCombination;
   }
+
+  async create(
+  body: {
+    guestName?: string;
+    guestEmail?: string;
+    guestPhone?: string;
+    reservationDate: string;
+    startTime: string;
+    guestCount: number;
+  },
+  userId?: string,
+) {
+  const reservationDate = new Date(body.reservationDate);
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+  reservationDate.setHours(0, 0, 0, 0);
+
+  if (reservationDate < today) {
+    throw new BadRequestException('Reservation date cannot be in the past');
+  }
+
+  let guestName = body.guestName;
+  let guestEmail = body.guestEmail;
+  let guestPhone = body.guestPhone;
+
+  if (userId) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (user) {
+      guestName = guestName ?? user.name;
+      guestEmail = guestEmail ?? user.email;
+      guestPhone = guestPhone ?? user.phone ?? '';
+    }
+  }
+
+  if (!guestName || !guestEmail || !guestPhone) {
+    throw new BadRequestException(
+      'Guest name, email, and phone are required',
+    );
+  }
+
+  const endTime = this.calculateEndTime(body.startTime);
+
+  const overlappingReservations = await this.prisma.reservation.findMany({
+    where: {
+      reservationDate,
+      status: {
+        not: 'cancelled',
+      },
+      AND: [
+        {
+          startTime: {
+            lt: endTime,
+          },
+        },
+        {
+          endTime: {
+            gt: body.startTime,
+          },
+        },
+      ],
+    },
+    include: {
+      tables: true,
+    },
+  });
+
+  const reservedTableIds = overlappingReservations.flatMap((reservation) =>
+    reservation.tables.map((table) => table.tableId),
+  );
+
+  const availableTables = await this.prisma.table.findMany({
+    where: {
+      status: 'available',
+      id: {
+        notIn: reservedTableIds,
+      },
+    },
+    orderBy: {
+      capacity: 'asc',
+    },
+  });
+
+  const selectedTables = this.findBestTableCombination(
+    availableTables,
+    body.guestCount,
+  );
+
+  if (!selectedTables) {
+    throw new BadRequestException(
+      'No available table for this reservation time',
+    );
+  }
+
+  const reservation = await this.prisma.reservation.create({
+  data: {
+    userId: userId ?? null,
+    guestName,
+    guestEmail,
+    guestPhone,
+    reservationCode: `WHISK-${Date.now()}`,
+    reservationDate,
+    startTime: body.startTime,
+    endTime,
+    guestCount: body.guestCount,
+
+    tables: {
+      create: selectedTables.map((table) => ({
+        tableId: table.id,
+      })),
+    },
+  },
+  include: {
+    tables: {
+      include: {
+        table: true,
+      },
+    },
+  },
+});
+
+  return reservation;
+}
 
   async findAll() {
     return this.prisma.reservation.findMany({
