@@ -87,41 +87,69 @@ async create(
   }
 
   async update(
-    id: string,
-    body: Partial<{
-      guestName: string;
-      guestEmail: string;
-      guestPhone: string;
-      reservationDate: string;
-      startTime: string;
-      endTime: string;
-      guestCount: number;
-      status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-    }>,
+  id: string,
+  body: Partial<{
+    guestName: string;
+    guestEmail: string;
+    guestPhone: string;
+    reservationDate: string;
+    startTime: string;
+    endTime: string;
+    guestCount: number;
+    status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  }>,
+  user: {
+    userId: string;
+    role: string;
+  },
+) {
+  const reservation = await this.findOne(id);
+
+  if (
+    user.role !== 'ADMIN' &&
+    reservation.userId !== user.userId
   ) {
-    await this.findOne(id);
-
-    return this.prisma.reservation.update({
-      where: { id },
-      data: {
-        ...body,
-        reservationDate: body.reservationDate
-          ? new Date(body.reservationDate)
-          : undefined,
-      },
-    });
+    throw new BadRequestException(
+      'You are not allowed to update this reservation',
+    );
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  return this.prisma.reservation.update({
+    where: { id },
+    data: {
+      ...body,
+      reservationDate: body.reservationDate
+        ? new Date(body.reservationDate)
+        : undefined,
+    },
+  });
+}
 
-    return this.prisma.reservation.update({
-      where: { id },
-      data: {
-        status: 'cancelled',
-      },
-    });
+  async remove(
+  id: string,
+  user: {
+    userId: string;
+    role: string;
+  },
+) {
+  const reservation = await this.findOne(id);
+
+  if (
+    user.role !== 'ADMIN' &&
+    reservation.userId !== user.userId
+  ) {
+    throw new BadRequestException(
+      'You are not allowed to cancel this reservation',
+    );
   }
+
+  return this.prisma.reservation.update({
+    where: { id },
+    data: {
+      status: 'cancelled',
+    },
+  });
+}
 
   async findMyReservations(userId: string) {
   return this.prisma.reservation.findMany({

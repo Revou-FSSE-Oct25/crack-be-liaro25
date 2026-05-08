@@ -12,6 +12,8 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { ReservationsService } from './reservations.service';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('reservations')
 export class ReservationsController {
@@ -35,6 +37,8 @@ export class ReservationsController {
     return this.reservationsService.create(body, req.user?.userId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Get()
   findAll() {
     return this.reservationsService.findAll();
@@ -51,8 +55,10 @@ export class ReservationsController {
     return this.reservationsService.findOne(id);
   }
 
-  @Patch(':id')
-  update(
+    @Patch(':id')
+    @UseGuards(JwtAuthGuard)
+    update(
+    @Request() req: any,
     @Param('id') id: string,
     @Body()
     body: Partial<{
@@ -66,11 +72,12 @@ export class ReservationsController {
       status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
     }>,
   ) {
-    return this.reservationsService.update(id, body);
+    return this.reservationsService.update(id, body, req.user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.reservationsService.remove(id);
+  @UseGuards(JwtAuthGuard)
+  remove(@Request() req: any, @Param('id') id: string) {
+    return this.reservationsService.remove(id, req.user);
   }
 }
