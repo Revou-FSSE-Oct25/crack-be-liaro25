@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { ReservationsService } from './reservations.service';
 
 @Controller('reservations')
@@ -6,21 +18,32 @@ export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
   @Post()
-  create(@Body() body: {
-    guestName: string;
-    guestEmail: string;
-    guestPhone: string;
-    reservationDate: string;
-    startTime: string;
-    endTime: string;
-    guestCount: number;
-  }) {
-    return this.reservationsService.create(body);
+  @UseGuards(OptionalJwtAuthGuard)
+  create(
+    @Request() req: any,
+    @Body()
+    body: {
+      guestName?: string;
+      guestEmail?: string;
+      guestPhone?: string;
+      reservationDate: string;
+      startTime: string;
+      endTime: string;
+      guestCount: number;
+    },
+  ) {
+    return this.reservationsService.create(body, req.user?.userId);
   }
 
   @Get()
   findAll() {
     return this.reservationsService.findAll();
+  }
+
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  findMyReservations(@Request() req: any) {
+    return this.reservationsService.findMyReservations(req.user.userId);
   }
 
   @Get(':id')
@@ -31,7 +54,8 @@ export class ReservationsController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body() body: Partial<{
+    @Body()
+    body: Partial<{
       guestName: string;
       guestEmail: string;
       guestPhone: string;

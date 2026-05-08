@@ -19,9 +19,13 @@ export class AuthService {
     email: string;
     password: string;
     phone?: string;
+    address?: string;
+    dateOfBirth?: string;
   }) {
+    const email = body.email.toLowerCase().trim();
+
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: body.email },
+      where: { email },
     });
 
     if (existingUser) {
@@ -32,39 +36,45 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        name: body.name,
-        email: body.email,
+        name: body.name.trim(),
+        email,
         password: hashedPassword,
-        phone: body.phone,
+        phone: body.phone?.trim(),
+        address: body.address?.trim(),
+        dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : undefined,
       },
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
+        address: true,
+        dateOfBirth: true,
         createdAt: true,
       },
     });
 
     return {
-      message: 'User registered successfully',
+      message: 'Registration successful',
       user,
     };
   }
 
   async login(body: { email: string; password: string }) {
+    const email = body.email.toLowerCase().trim();
+
     const user = await this.prisma.user.findUnique({
-      where: { email: body.email },
+      where: { email },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Login failed. Please check your email and password.');
     }
 
     const isPasswordValid = await bcrypt.compare(body.password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Login failed. Please check your email and password.');
     }
 
     const payload = {
@@ -94,6 +104,8 @@ export class AuthService {
         name: true,
         email: true,
         phone: true,
+        address: true,
+        dateOfBirth: true,
         createdAt: true,
       },
     });
