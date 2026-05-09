@@ -66,15 +66,4 @@ export class AuthController {
   ) {
     return this.authService.login(body);
   }
-
-  @Get('profile')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get authenticated user profile' })
-  @ApiResponse({
-    status: 200,
-    description: 'User profile retrieved successfully',
-  })
-  getProfile(@Request() req: any) {
-    return this.authService.getProfile(req.user.userId);
-  }
 }
