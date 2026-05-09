@@ -20,6 +20,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { CreateReservationDto } from './dto/create-reservation.dto';
+import { UpdateReservationDto } from './dto/update-reservation.dto';
 
 @ApiTags('Reservations')
 @ApiBearerAuth()
@@ -30,29 +32,21 @@ export class ReservationsController {
   @Post()
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Create a new reservation' })
-  @ApiResponse({ status: 201, description: 'Reservation created successfully' })
-  create(
-    @Request() req: any,
-    @Body()
-    body: {
-      guestName?: string;
-      guestEmail?: string;
-      guestPhone?: string;
-      reservationDate: string;
-      startTime: string;
-      guestCount: number;
-    },
-  ) {
+  @ApiResponse({
+    status: 201,
+    description: 'Reservation created successfully',
+  })
+  create(@Request() req: any, @Body() body: CreateReservationDto) {
     return this.reservationsService.create(body, req.user?.userId);
   }
 
+  @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @Get()
-  @ApiOperation({ summary: 'Get all reservations' })
+  @ApiOperation({ summary: 'Get all reservations (Admin only)' })
   @ApiResponse({
     status: 200,
-    description: 'List of reservations retrieved successfully',
+    description: 'Reservations retrieved successfully',
   })
   findAll() {
     return this.reservationsService.findAll();
@@ -63,14 +57,15 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Get my reservations' })
   @ApiResponse({
     status: 200,
-    description: 'My reservations retrieved successfully',
+    description: 'User reservations retrieved successfully',
   })
   findMyReservations(@Request() req: any) {
     return this.reservationsService.findMyReservations(req.user.userId);
   }
 
-  @Get('code/:reservationCode')
-  @ApiOperation({ summary: 'Get reservation by reservation code' })
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get reservation by ID' })
   @ApiResponse({
     status: 200,
     description: 'Reservation retrieved successfully',
@@ -79,53 +74,50 @@ export class ReservationsController {
     status: 404,
     description: 'Reservation not found',
   })
-  findByReservationCode(@Param('reservationCode') reservationCode: string) {
-    return this.reservationsService.findByReservationCode(reservationCode);
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get reservation by ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Reservation retrieved successfully',
-  })
-  @ApiResponse({ status: 404, description: 'Reservation not found' })
-  findOne(@Param('id') id: string) {
-    return this.reservationsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.reservationsService.findOne(id, req.user);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Update reservation' })
-  @ApiResponse({ status: 200, description: 'Reservation updated successfully' })
-  @ApiResponse({ status: 404, description: 'Reservation not found' })
-  update(
-    @Request() req: any,
-    @Param('id') id: string,
-    @Body()
-    body: Partial<{
-      guestName: string;
-      guestEmail: string;
-      guestPhone: string;
-      reservationDate: string;
-      startTime: string;
-      endTime: string;
-      guestCount: number;
-      status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-    }>,
-  ) {
-    return this.reservationsService.update(id, body, req.user);
+  @ApiResponse({
+    status: 200,
+    description: 'Reservation updated successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Reservation not found',
+  })
+  update(@Param('id') id: string, @Body() body: UpdateReservationDto) {
+    return this.reservationsService.update(id, body);
   }
 
-  @Delete(':id')
+  @Patch(':id/cancel')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Cancel reservation' })
   @ApiResponse({
     status: 200,
     description: 'Reservation cancelled successfully',
   })
-  @ApiResponse({ status: 404, description: 'Reservation not found' })
-  remove(@Request() req: any, @Param('id') id: string) {
-    return this.reservationsService.remove(id, req.user);
+  cancel(@Param('id') id: string, @Request() req: any) {
+    return this.reservationsService.cancel(id, req.user);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Delete reservation (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reservation deleted successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Reservation not found',
+  })
+  remove(@Param('id') id: string) {
+    return this.reservationsService.remove(id);
   }
 }

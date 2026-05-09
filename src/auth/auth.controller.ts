@@ -1,24 +1,10 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
-
+import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
-
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Auth')
-@ApiBearerAuth()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -33,17 +19,7 @@ export class AuthController {
     status: 400,
     description: 'Email already registered',
   })
-  register(
-    @Body()
-    body: {
-      name: string;
-      email: string;
-      password: string;
-      phone?: string;
-      address?: string;
-      dateOfBirth?: string;
-    },
-  ) {
+  register(@Body() body: RegisterDto) {
     return this.authService.register(body);
   }
 
@@ -57,13 +33,7 @@ export class AuthController {
     status: 401,
     description: 'Invalid credentials',
   })
-  login(
-    @Body()
-    body: {
-      email: string;
-      password: string;
-    },
-  ) {
+  login(@Body() body: LoginDto) {
     return this.authService.login(body);
   }
 }

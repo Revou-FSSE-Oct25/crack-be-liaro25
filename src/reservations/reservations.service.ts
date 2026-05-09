@@ -10,6 +10,31 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ReservationsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private validateReservationTime(startTime: string) {
+    const [hours, minutes] = startTime.split(':').map(Number);
+
+    if (
+      Number.isNaN(hours) ||
+      Number.isNaN(minutes) ||
+      hours < 0 ||
+      hours > 23 ||
+      minutes < 0 ||
+      minutes > 59
+    ) {
+      throw new BadRequestException('Invalid start time format');
+    }
+
+    const startMinutes = hours * 60 + minutes;
+    const openingMinutes = 11 * 60;
+    const latestStartMinutes = 18 * 60;
+
+    if (startMinutes < openingMinutes || startMinutes > latestStartMinutes) {
+      throw new BadRequestException(
+        'Reservation time must be between 11:00 and 18:00',
+      );
+    }
+  }
+
   private calculateEndTime(startTime: string): string {
     const [hours, minutes] = startTime.split(':').map(Number);
 
@@ -18,6 +43,17 @@ export class ReservationsService {
     date.setMinutes(date.getMinutes() + 120);
 
     return date.toTimeString().slice(0, 5);
+  }
+
+  private validateReservationDate(reservationDate: Date) {
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+    reservationDate.setHours(0, 0, 0, 0);
+
+    if (reservationDate < today) {
+      throw new BadRequestException('Reservation date cannot be in the past');
+    }
   }
 
   private findBestTableCombination(
@@ -63,6 +99,58 @@ export class ReservationsService {
     return bestCombination;
   }
 
+  private async getAvailableTables(
+    reservationDate: Date,
+    startTime: string,
+    endTime: string,
+    excludeReservationId?: string,
+  ) {
+    const overlappingReservations = await this.prisma.reservation.findMany({
+      where: {
+        id: excludeReservationId
+          ? {
+              not: excludeReservationId,
+            }
+          : undefined,
+        reservationDate,
+        status: {
+          not: 'cancelled',
+        },
+        AND: [
+          {
+            startTime: {
+              lt: endTime,
+            },
+          },
+          {
+            endTime: {
+              gt: startTime,
+            },
+          },
+        ],
+      },
+      include: {
+        tables: true,
+      },
+    });
+
+    const reservedTableIds = overlappingReservations.flatMap((reservation) =>
+      reservation.tables.map((table) => table.tableId),
+    );
+
+    return this.prisma.table.findMany({
+      where: {
+        status: 'available',
+        id: {
+          notIn: reservedTableIds,
+        },
+      },
+      orderBy: {
+        capacity: 'asc',
+      },
+    });
+  }
+
   async create(
     body: {
       guestName?: string;
@@ -74,15 +162,10 @@ export class ReservationsService {
     },
     userId?: string,
   ) {
+    this.validateReservationTime(body.startTime);
+
     const reservationDate = new Date(body.reservationDate);
-    const today = new Date();
-
-    today.setHours(0, 0, 0, 0);
-    reservationDate.setHours(0, 0, 0, 0);
-
-    if (reservationDate < today) {
-      throw new BadRequestException('Reservation date cannot be in the past');
-    }
+    this.validateReservationDate(reservationDate);
 
     let guestName = body.guestName;
     let guestEmail = body.guestEmail;
@@ -108,45 +191,11 @@ export class ReservationsService {
 
     const endTime = this.calculateEndTime(body.startTime);
 
-    const overlappingReservations = await this.prisma.reservation.findMany({
-      where: {
-        reservationDate,
-        status: {
-          not: 'cancelled',
-        },
-        AND: [
-          {
-            startTime: {
-              lt: endTime,
-            },
-          },
-          {
-            endTime: {
-              gt: body.startTime,
-            },
-          },
-        ],
-      },
-      include: {
-        tables: true,
-      },
-    });
-
-    const reservedTableIds = overlappingReservations.flatMap((reservation) =>
-      reservation.tables.map((table) => table.tableId),
+    const availableTables = await this.getAvailableTables(
+      reservationDate,
+      body.startTime,
+      endTime,
     );
-
-    const availableTables = await this.prisma.table.findMany({
-      where: {
-        status: 'available',
-        id: {
-          notIn: reservedTableIds,
-        },
-      },
-      orderBy: {
-        capacity: 'asc',
-      },
-    });
 
     const selectedTables = this.findBestTableCombination(
       availableTables,
@@ -159,7 +208,7 @@ export class ReservationsService {
       );
     }
 
-    const reservation = await this.prisma.reservation.create({
+    return this.prisma.reservation.create({
       data: {
         userId: userId ?? null,
         guestName,
@@ -170,7 +219,6 @@ export class ReservationsService {
         startTime: body.startTime,
         endTime,
         guestCount: body.guestCount,
-
         tables: {
           create: selectedTables.map((table) => ({
             tableId: table.id,
@@ -185,8 +233,6 @@ export class ReservationsService {
         },
       },
     });
-
-    return reservation;
   }
 
   async findAll() {
@@ -194,76 +240,14 @@ export class ReservationsService {
       orderBy: {
         createdAt: 'desc',
       },
-    });
-  }
-
-  async findOne(id: string) {
-    const reservation = await this.prisma.reservation.findUnique({
-      where: { id },
-    });
-
-    if (!reservation) {
-      throw new NotFoundException('Reservation not found');
-    }
-
-    return reservation;
-  }
-
-  async update(
-    id: string,
-    body: Partial<{
-      guestName: string;
-      guestEmail: string;
-      guestPhone: string;
-      reservationDate: string;
-      startTime: string;
-      endTime: string;
-      guestCount: number;
-      status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-    }>,
-    user: {
-      userId: string;
-      role: string;
-    },
-  ) {
-    const reservation = await this.findOne(id);
-
-    if (user.role !== 'ADMIN' && reservation.userId !== user.userId) {
-      throw new ForbiddenException(
-        'You are not allowed to update this reservation',
-      );
-    }
-
-    return this.prisma.reservation.update({
-      where: { id },
-      data: {
-        ...body,
-        reservationDate: body.reservationDate
-          ? new Date(body.reservationDate)
-          : undefined,
-      },
-    });
-  }
-
-  async remove(
-    id: string,
-    user: {
-      userId: string;
-      role: string;
-    },
-  ) {
-    const reservation = await this.findOne(id);
-
-    if (user.role !== 'ADMIN' && reservation.userId !== user.userId) {
-      throw new ForbiddenException(
-        'You are not allowed to cancel this reservation',
-      );
-    }
-
-    return this.prisma.reservation.update({
-      where: { id },
-      data: {
-        status: 'cancelled',
+      include: {
+        user: true,
+        tables: {
+          include: {
+            table: true,
+          },
+        },
+        order: true,
       },
     });
   }
@@ -274,8 +258,50 @@ export class ReservationsService {
       orderBy: {
         createdAt: 'desc',
       },
+      include: {
+        tables: {
+          include: {
+            table: true,
+          },
+        },
+        order: true,
+      },
     });
   }
+
+  async findOne(
+    id: string,
+    user?: {
+      userId: string;
+      role: string;
+    },
+  ) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        tables: {
+          include: {
+            table: true,
+          },
+        },
+        order: true,
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    if (user && user.role !== 'ADMIN' && reservation.userId !== user.userId) {
+      throw new ForbiddenException(
+        'You are not allowed to access this reservation',
+      );
+    }
+
+    return reservation;
+  }
+
   async findByReservationCode(reservationCode: string) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { reservationCode },
@@ -304,5 +330,149 @@ export class ReservationsService {
     }
 
     return reservation;
+  }
+
+  async update(
+    id: string,
+    body: Partial<{
+      guestName: string;
+      guestEmail: string;
+      guestPhone: string;
+      reservationDate: string;
+      startTime: string;
+      guestCount: number;
+      status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+    }>,
+  ) {
+    const reservation = await this.findOne(id);
+
+    const updatedReservationDate = body.reservationDate
+      ? new Date(body.reservationDate)
+      : reservation.reservationDate;
+
+    const updatedStartTime = body.startTime ?? reservation.startTime;
+    const updatedGuestCount = body.guestCount ?? reservation.guestCount;
+
+    this.validateReservationTime(updatedStartTime);
+    this.validateReservationDate(updatedReservationDate);
+
+    const updatedEndTime = this.calculateEndTime(updatedStartTime);
+
+    const shouldReassignTables =
+      body.reservationDate !== undefined ||
+      body.startTime !== undefined ||
+      body.guestCount !== undefined;
+
+    if (shouldReassignTables) {
+      const availableTables = await this.getAvailableTables(
+        updatedReservationDate,
+        updatedStartTime,
+        updatedEndTime,
+        id,
+      );
+
+      const selectedTables = this.findBestTableCombination(
+        availableTables,
+        updatedGuestCount,
+      );
+
+      if (!selectedTables) {
+        throw new BadRequestException(
+          'No available table for this reservation time',
+        );
+      }
+
+      return this.prisma.reservation.update({
+        where: { id },
+        data: {
+          guestName: body.guestName,
+          guestEmail: body.guestEmail,
+          guestPhone: body.guestPhone,
+          reservationDate: updatedReservationDate,
+          startTime: updatedStartTime,
+          endTime: updatedEndTime,
+          guestCount: updatedGuestCount,
+          status: body.status,
+          tables: {
+            deleteMany: {},
+            create: selectedTables.map((table) => ({
+              tableId: table.id,
+            })),
+          },
+        },
+        include: {
+          tables: {
+            include: {
+              table: true,
+            },
+          },
+        },
+      });
+    }
+
+    return this.prisma.reservation.update({
+      where: { id },
+      data: {
+        guestName: body.guestName,
+        guestEmail: body.guestEmail,
+        guestPhone: body.guestPhone,
+        status: body.status,
+      },
+      include: {
+        tables: {
+          include: {
+            table: true,
+          },
+        },
+      },
+    });
+  }
+
+  async cancel(
+    id: string,
+    user: {
+      userId: string;
+      role: string;
+    },
+  ) {
+    const reservation = await this.findOne(id);
+
+    if (user.role !== 'ADMIN' && reservation.userId !== user.userId) {
+      throw new ForbiddenException(
+        'You are not allowed to cancel this reservation',
+      );
+    }
+
+    if (reservation.status === 'cancelled') {
+      throw new BadRequestException('Reservation is already cancelled');
+    }
+
+    if (reservation.status === 'completed') {
+      throw new BadRequestException(
+        'Completed reservation cannot be cancelled',
+      );
+    }
+
+    return this.prisma.reservation.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+      },
+      include: {
+        tables: {
+          include: {
+            table: true,
+          },
+        },
+      },
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+
+    return this.prisma.reservation.delete({
+      where: { id },
+    });
   }
 }
