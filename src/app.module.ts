@@ -6,9 +6,11 @@ import { ReservationsModule } from './reservations/reservations.module';
 import { UsersModule } from './users/users.module';
 import { TablesModule } from './tables/tables.module';
 import { MenusModule } from './menus/menus.module';
+import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
-  imports: [AuthModule, ReservationsModule, UsersModule, TablesModule, MenusModule],
+  imports: [AuthModule, ReservationsModule, UsersModule, TablesModule, MenusModule, OrdersModule, PaymentsModule],
   controllers: [AppController],
   providers: [AppService],
 })
