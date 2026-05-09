@@ -10,11 +10,29 @@ import {
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+
+@ApiTags('Auth')
+@ApiBearerAuth()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @ApiOperation({ summary: 'Register new customer account' })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Email already registered',
+  })
   register(
     @Body()
     body: {
@@ -30,6 +48,15 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiOperation({ summary: 'Login user and return JWT token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials',
+  })
   login(
     @Body()
     body: {
@@ -42,6 +69,11 @@ export class AuthController {
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get authenticated user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'User profile retrieved successfully',
+  })
   getProfile(@Request() req: any) {
     return this.authService.getProfile(req.user.userId);
   }

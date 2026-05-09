@@ -15,7 +15,12 @@ import { Roles } from '../auth/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -26,6 +31,8 @@ export class OrdersController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Create a new order' })
+  @ApiResponse({ status: 201, description: 'Order created successfully' })
   create(@Body() body: CreateOrderDto) {
     return this.ordersService.create(body);
   }
@@ -33,12 +40,22 @@ export class OrdersController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get all orders' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of orders retrieved successfully',
+  })
   findAll() {
     return this.ordersService.findAll();
   }
 
   @Get('my')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get my orders' })
+  @ApiResponse({
+    status: 200,
+    description: 'My orders retrieved successfully',
+  })
   findMyOrders(@Request() req: any) {
     return this.ordersService.findMyOrders(req.user.userId);
   }
@@ -46,6 +63,12 @@ export class OrdersController {
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get order by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Order retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   findOne(@Param('id') id: string) {
     return this.ordersService.findOne(id);
   }
@@ -53,6 +76,12 @@ export class OrdersController {
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update order status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Order status updated successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   updateStatus(@Param('id') id: string, @Body() body: UpdateOrderStatusDto) {
     return this.ordersService.updateStatus(id, body.status);
   }
@@ -60,6 +89,12 @@ export class OrdersController {
   @Patch(':id/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Cancel order' })
+  @ApiResponse({
+    status: 200,
+    description: 'Order cancelled successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   cancel(@Param('id') id: string) {
     return this.ordersService.cancel(id);
   }
