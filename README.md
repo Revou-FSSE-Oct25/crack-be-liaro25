@@ -4,6 +4,29 @@ A RESTful backend API for an elegant afternoon tea reservation and ordering plat
 
 ---
 
+## Deployment Links
+
+### Live Backend API
+
+The backend API has been deployed using Railway.
+
+- Live API: https://whiskandwonder.up.railway.app
+- Swagger Documentation: https://whiskandwonder.up.railway.app/api
+
+### Project Documentation
+
+- Notion Documentation: https://noto.li/jeeuhC
+
+### Frontend Deployment
+
+- Frontend URL: Coming soon
+
+### Presentation
+
+- Canva Presentation: Coming soon
+
+---
+
 ## Features
 
 - JWT Authentication
@@ -72,9 +95,7 @@ Create `.env` file:
 
 ```env
 DATABASE_URL=
-DIRECT_URL=
 JWT_SECRET=
-PORT=
 ```
 
 ---
@@ -114,22 +135,6 @@ Open Prisma Studio:
 
 ```bash
 npx prisma studio
-```
-
----
-
-## Swagger API Documentation
-
-Swagger documentation is available at:
-
-```txt
-/api
-```
-
-Example:
-
-```txt
-http://localhost:3000/api
 ```
 
 ---
@@ -188,10 +193,3 @@ Detailed documentation is available inside:
 ## Current Status
 
 Backend core system completed.
-
-Current focus:
-
-- API documentation finalization
-- Testing & security hardening
-- Deployment optimization
-- Portfolio-ready documentation
