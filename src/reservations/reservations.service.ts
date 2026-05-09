@@ -64,130 +64,130 @@ export class ReservationsService {
   }
 
   async create(
-  body: {
-    guestName?: string;
-    guestEmail?: string;
-    guestPhone?: string;
-    reservationDate: string;
-    startTime: string;
-    guestCount: number;
-  },
-  userId?: string,
-) {
-  const reservationDate = new Date(body.reservationDate);
-  const today = new Date();
+    body: {
+      guestName?: string;
+      guestEmail?: string;
+      guestPhone?: string;
+      reservationDate: string;
+      startTime: string;
+      guestCount: number;
+    },
+    userId?: string,
+  ) {
+    const reservationDate = new Date(body.reservationDate);
+    const today = new Date();
 
-  today.setHours(0, 0, 0, 0);
-  reservationDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    reservationDate.setHours(0, 0, 0, 0);
 
-  if (reservationDate < today) {
-    throw new BadRequestException('Reservation date cannot be in the past');
-  }
+    if (reservationDate < today) {
+      throw new BadRequestException('Reservation date cannot be in the past');
+    }
 
-  let guestName = body.guestName;
-  let guestEmail = body.guestEmail;
-  let guestPhone = body.guestPhone;
+    let guestName = body.guestName;
+    let guestEmail = body.guestEmail;
+    let guestPhone = body.guestPhone;
 
-  if (userId) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (user) {
+        guestName = guestName ?? user.name;
+        guestEmail = guestEmail ?? user.email;
+        guestPhone = guestPhone ?? user.phone ?? '';
+      }
+    }
+
+    if (!guestName || !guestEmail || !guestPhone) {
+      throw new BadRequestException(
+        'Guest name, email, and phone are required',
+      );
+    }
+
+    const endTime = this.calculateEndTime(body.startTime);
+
+    const overlappingReservations = await this.prisma.reservation.findMany({
+      where: {
+        reservationDate,
+        status: {
+          not: 'cancelled',
+        },
+        AND: [
+          {
+            startTime: {
+              lt: endTime,
+            },
+          },
+          {
+            endTime: {
+              gt: body.startTime,
+            },
+          },
+        ],
+      },
+      include: {
+        tables: true,
+      },
     });
 
-    if (user) {
-      guestName = guestName ?? user.name;
-      guestEmail = guestEmail ?? user.email;
-      guestPhone = guestPhone ?? user.phone ?? '';
+    const reservedTableIds = overlappingReservations.flatMap((reservation) =>
+      reservation.tables.map((table) => table.tableId),
+    );
+
+    const availableTables = await this.prisma.table.findMany({
+      where: {
+        status: 'available',
+        id: {
+          notIn: reservedTableIds,
+        },
+      },
+      orderBy: {
+        capacity: 'asc',
+      },
+    });
+
+    const selectedTables = this.findBestTableCombination(
+      availableTables,
+      body.guestCount,
+    );
+
+    if (!selectedTables) {
+      throw new BadRequestException(
+        'No available table for this reservation time',
+      );
     }
-  }
 
-  if (!guestName || !guestEmail || !guestPhone) {
-    throw new BadRequestException(
-      'Guest name, email, and phone are required',
-    );
-  }
+    const reservation = await this.prisma.reservation.create({
+      data: {
+        userId: userId ?? null,
+        guestName,
+        guestEmail,
+        guestPhone,
+        reservationCode: `WHISK-${Date.now()}`,
+        reservationDate,
+        startTime: body.startTime,
+        endTime,
+        guestCount: body.guestCount,
 
-  const endTime = this.calculateEndTime(body.startTime);
-
-  const overlappingReservations = await this.prisma.reservation.findMany({
-    where: {
-      reservationDate,
-      status: {
-        not: 'cancelled',
-      },
-      AND: [
-        {
-          startTime: {
-            lt: endTime,
-          },
+        tables: {
+          create: selectedTables.map((table) => ({
+            tableId: table.id,
+          })),
         },
-        {
-          endTime: {
-            gt: body.startTime,
-          },
-        },
-      ],
-    },
-    include: {
-      tables: true,
-    },
-  });
-
-  const reservedTableIds = overlappingReservations.flatMap((reservation) =>
-    reservation.tables.map((table) => table.tableId),
-  );
-
-  const availableTables = await this.prisma.table.findMany({
-    where: {
-      status: 'available',
-      id: {
-        notIn: reservedTableIds,
       },
-    },
-    orderBy: {
-      capacity: 'asc',
-    },
-  });
-
-  const selectedTables = this.findBestTableCombination(
-    availableTables,
-    body.guestCount,
-  );
-
-  if (!selectedTables) {
-    throw new BadRequestException(
-      'No available table for this reservation time',
-    );
-  }
-
-  const reservation = await this.prisma.reservation.create({
-  data: {
-    userId: userId ?? null,
-    guestName,
-    guestEmail,
-    guestPhone,
-    reservationCode: `WHISK-${Date.now()}`,
-    reservationDate,
-    startTime: body.startTime,
-    endTime,
-    guestCount: body.guestCount,
-
-    tables: {
-      create: selectedTables.map((table) => ({
-        tableId: table.id,
-      })),
-    },
-  },
-  include: {
-    tables: {
       include: {
-        table: true,
+        tables: {
+          include: {
+            table: true,
+          },
+        },
       },
-    },
-  },
-});
+    });
 
-  return reservation;
-}
+    return reservation;
+  }
 
   async findAll() {
     return this.prisma.reservation.findMany({
@@ -275,5 +275,34 @@ export class ReservationsService {
         createdAt: 'desc',
       },
     });
+  }
+  async findByReservationCode(reservationCode: string) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { reservationCode },
+      include: {
+        tables: {
+          include: {
+            table: true,
+          },
+        },
+        order: {
+          include: {
+            items: {
+              include: {
+                menuItem: true,
+                menuPackage: true,
+              },
+            },
+            payments: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    return reservation;
   }
 }

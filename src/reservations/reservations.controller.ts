@@ -69,6 +69,20 @@ export class ReservationsController {
     return this.reservationsService.findMyReservations(req.user.userId);
   }
 
+  @Get('code/:reservationCode')
+  @ApiOperation({ summary: 'Get reservation by reservation code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reservation retrieved successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Reservation not found',
+  })
+  findByReservationCode(@Param('reservationCode') reservationCode: string) {
+    return this.reservationsService.findByReservationCode(reservationCode);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get reservation by ID' })
   @ApiResponse({
@@ -105,8 +119,11 @@ export class ReservationsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete reservation' })
-  @ApiResponse({ status: 200, description: 'Reservation deleted successfully' })
+  @ApiOperation({ summary: 'Cancel reservation' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reservation cancelled successfully',
+  })
   @ApiResponse({ status: 404, description: 'Reservation not found' })
   remove(@Request() req: any, @Param('id') id: string) {
     return this.reservationsService.remove(id, req.user);
