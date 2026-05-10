@@ -36,10 +36,7 @@ export class ReservationsController {
     status: 201,
     description: 'Reservation created successfully',
   })
-  create(
-    @Request() req: any,
-    @Body() body: CreateReservationDto,
-  ) {
+  create(@Request() req: any, @Body() body: CreateReservationDto) {
     return this.reservationsService.create(body, req.user?.userId);
   }
 
@@ -64,6 +61,20 @@ export class ReservationsController {
   })
   findMyReservations(@Request() req: any) {
     return this.reservationsService.findMyReservations(req.user.userId);
+  }
+
+  @Get('code/:reservationCode')
+  @ApiOperation({ summary: 'Get reservation by reservation code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reservation retrieved successfully by reservation code',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Reservation not found',
+  })
+  findByReservationCode(@Param('reservationCode') reservationCode: string) {
+    return this.reservationsService.findByReservationCode(reservationCode);
   }
 
   @Get(':id')
@@ -93,10 +104,7 @@ export class ReservationsController {
     status: 404,
     description: 'Reservation not found',
   })
-  update(
-    @Param('id') id: string,
-    @Body() body: UpdateReservationDto,
-  ) {
+  update(@Param('id') id: string, @Body() body: UpdateReservationDto) {
     return this.reservationsService.update(id, body);
   }
 
