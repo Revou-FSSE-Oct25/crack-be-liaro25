@@ -428,6 +428,92 @@ export class ReservationsService {
     });
   }
 
+  async reschedule(
+    id: string,
+    user: {
+      userId: string;
+      role: string;
+    },
+    body: {
+      reservationDate: string;
+      startTime: string;
+    },
+  ) {
+    const reservation = await this.findOne(id);
+
+    if (user.role !== 'ADMIN' && reservation.userId !== user.userId) {
+      throw new ForbiddenException(
+        'You are not allowed to reschedule this reservation',
+      );
+    }
+
+    if (reservation.status === 'cancelled') {
+      throw new BadRequestException(
+        'Cancelled reservation cannot be rescheduled',
+      );
+    }
+
+    if (reservation.status === 'completed') {
+      throw new BadRequestException(
+        'Completed reservation cannot be rescheduled',
+      );
+    }
+
+    if (!body.reservationDate || !body.startTime) {
+      throw new BadRequestException(
+        'Reservation date and start time are required',
+      );
+    }
+
+    const updatedReservationDate = new Date(body.reservationDate);
+    const updatedStartTime = body.startTime;
+    const updatedEndTime = this.calculateEndTime(updatedStartTime);
+
+    this.validateReservationTime(updatedStartTime);
+    this.validateReservationDate(updatedReservationDate);
+
+    const availableTables = await this.getAvailableTables(
+      updatedReservationDate,
+      updatedStartTime,
+      updatedEndTime,
+      id,
+    );
+
+    const selectedTables = this.findBestTableCombination(
+      availableTables,
+      reservation.guestCount,
+    );
+
+    if (!selectedTables) {
+      throw new BadRequestException(
+        'No available table for this reservation time',
+      );
+    }
+
+    return this.prisma.reservation.update({
+      where: { id },
+      data: {
+        reservationDate: updatedReservationDate,
+        startTime: updatedStartTime,
+        endTime: updatedEndTime,
+        status: 'pending',
+        tables: {
+          deleteMany: {},
+          create: selectedTables.map((table) => ({
+            tableId: table.id,
+          })),
+        },
+      },
+      include: {
+        tables: {
+          include: {
+            table: true,
+          },
+        },
+      },
+    });
+  }
+
   async cancel(
     id: string,
     user: {

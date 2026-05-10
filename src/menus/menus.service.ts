@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -24,10 +21,56 @@ export class MenusService {
     });
   }
 
-  async findAllMenuItems() {
+  async findAllMenuItems(filters?: {
+    search?: string;
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  }) {
     return this.prisma.menuItem.findMany({
-      orderBy: {
-        name: 'asc',
+      where: {
+        AND: [
+          filters?.search
+            ? {
+                OR: [
+                  {
+                    name: {
+                      contains: filters.search,
+                      mode: 'insensitive',
+                    },
+                  },
+                  {
+                    category: {
+                      contains: filters.search,
+                      mode: 'insensitive',
+                    },
+                  },
+                ],
+              }
+            : {},
+          filters?.category
+            ? {
+                category: {
+                  equals: filters.category,
+                  mode: 'insensitive',
+                },
+              }
+            : {},
+          filters?.minPrice !== undefined
+            ? {
+                price: {
+                  gte: filters.minPrice,
+                },
+              }
+            : {},
+          filters?.maxPrice !== undefined
+            ? {
+                price: {
+                  lte: filters.maxPrice,
+                },
+              }
+            : {},
+        ],
       },
     });
   }
@@ -79,10 +122,7 @@ export class MenusService {
 
   // MENU PACKAGES
 
-  async createMenuPackage(body: {
-    name: string;
-    price: number;
-  }) {
+  async createMenuPackage(body: { name: string; price: number }) {
     return this.prisma.menuPackage.create({
       data: {
         name: body.name.trim(),

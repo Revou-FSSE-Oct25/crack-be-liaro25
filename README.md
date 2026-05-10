@@ -79,7 +79,9 @@ docs/
 └── 08_DEPLOYMENT
 ```
 
----
+## ERD (Entity Relationship Diagram)
+
+## ![ERD](docs/XX.IMAGE/ERD.png)
 
 ## Installation
 

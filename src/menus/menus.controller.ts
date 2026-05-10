@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,6 +16,7 @@ import { MenusService } from './menus.service';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -26,13 +28,27 @@ export class MenusController {
   constructor(private readonly menusService: MenusService) {}
 
   @Get('items')
-  @ApiOperation({ summary: 'Get all menu items' })
+  @ApiOperation({ summary: 'Get all menu items with search and filters' })
+  @ApiQuery({ name: 'search', required: false, example: 'scone' })
+  @ApiQuery({ name: 'category', required: false, example: 'Sweet' })
+  @ApiQuery({ name: 'minPrice', required: false, example: 30000 })
+  @ApiQuery({ name: 'maxPrice', required: false, example: 100000 })
   @ApiResponse({
     status: 200,
     description: 'List of menu items retrieved successfully',
   })
-  findAllMenuItems() {
-    return this.menusService.findAllMenuItems();
+  findAllMenuItems(
+    @Query('search') search?: string,
+    @Query('category') category?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+  ) {
+    return this.menusService.findAllMenuItems({
+      search,
+      category,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    });
   }
 
   @Get('items/:id')
@@ -47,10 +63,10 @@ export class MenusController {
   }
 
   @Post('items')
-  @ApiOperation({ summary: 'Create a new menu item' })
-  @ApiResponse({ status: 201, description: 'Menu item created successfully' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @ApiOperation({ summary: 'Create a new menu item' })
+  @ApiResponse({ status: 201, description: 'Menu item created successfully' })
   createMenuItem(
     @Body()
     body: {
@@ -63,11 +79,11 @@ export class MenusController {
   }
 
   @Patch('items/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Update menu item' })
   @ApiResponse({ status: 200, description: 'Menu item updated successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
   updateMenuItem(
     @Param('id') id: string,
     @Body()
@@ -82,11 +98,11 @@ export class MenusController {
   }
 
   @Delete('items/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Delete menu item' })
   @ApiResponse({ status: 200, description: 'Menu item deleted successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
   removeMenuItem(@Param('id') id: string) {
     return this.menusService.removeMenuItem(id);
   }
@@ -113,13 +129,13 @@ export class MenusController {
   }
 
   @Post('packages')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Create a new menu package' })
   @ApiResponse({
     status: 201,
     description: 'Menu package created successfully',
   })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
   createMenuPackage(
     @Body()
     body: {
@@ -131,14 +147,14 @@ export class MenusController {
   }
 
   @Patch('packages/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Update menu package' })
   @ApiResponse({
     status: 200,
     description: 'Menu package updated successfully',
   })
   @ApiResponse({ status: 404, description: 'Menu package not found' })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
   updateMenuPackage(
     @Param('id') id: string,
     @Body()
@@ -152,14 +168,14 @@ export class MenusController {
   }
 
   @Delete('packages/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Delete menu package' })
   @ApiResponse({
     status: 200,
     description: 'Menu package deleted successfully',
   })
   @ApiResponse({ status: 404, description: 'Menu package not found' })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
   removeMenuPackage(@Param('id') id: string) {
     return this.menusService.removeMenuPackage(id);
   }

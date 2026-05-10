@@ -16,6 +16,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -106,6 +107,45 @@ export class ReservationsController {
   })
   update(@Param('id') id: string, @Body() body: UpdateReservationDto) {
     return this.reservationsService.update(id, body);
+  }
+
+  @Patch(':id/reschedule')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Reschedule own reservation' })
+  @ApiBody({
+    schema: {
+      example: {
+        reservationDate: '2026-06-01',
+        startTime: '13:00',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Reservation rescheduled successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid reservation date, time, or unavailable table',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'User is not allowed to reschedule this reservation',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Reservation not found',
+  })
+  reschedule(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      reservationDate: string;
+      startTime: string;
+    },
+    @Request() req: any,
+  ) {
+    return this.reservationsService.reschedule(id, req.user, body);
   }
 
   @Patch(':id/cancel')
