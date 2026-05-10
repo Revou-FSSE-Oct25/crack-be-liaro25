@@ -6,9 +6,19 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+type RequestUser = {
+  userId?: string;
+  id?: string;
+  role: string;
+};
+
 @Injectable()
 export class ReservationsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private getUserId(user: RequestUser): string {
+    return user.userId ?? user.id ?? '';
+  }
 
   private validateReservationTime(startTime: string) {
     const [hours, minutes] = startTime.split(':').map(Number);
@@ -45,8 +55,9 @@ export class ReservationsService {
     return date.toTimeString().slice(0, 5);
   }
 
-  private validateReservationDate(reservationDate: Date) {
+  private validateReservationDate(date: Date) {
     const today = new Date();
+    const reservationDate = new Date(date);
 
     today.setHours(0, 0, 0, 0);
     reservationDate.setHours(0, 0, 0, 0);
@@ -107,11 +118,7 @@ export class ReservationsService {
   ) {
     const overlappingReservations = await this.prisma.reservation.findMany({
       where: {
-        id: excludeReservationId
-          ? {
-              not: excludeReservationId,
-            }
-          : undefined,
+        id: excludeReservationId ? { not: excludeReservationId } : undefined,
         reservationDate,
         status: {
           not: 'cancelled',
@@ -235,8 +242,40 @@ export class ReservationsService {
     });
   }
 
-  async findAll() {
+  async findAll(filters?: { status?: string; date?: string; search?: string }) {
     return this.prisma.reservation.findMany({
+      where: {
+        status: filters?.status as any,
+        reservationDate: filters?.date ? new Date(filters.date) : undefined,
+        OR: filters?.search
+          ? [
+              {
+                reservationCode: {
+                  contains: filters.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                guestName: {
+                  contains: filters.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                guestEmail: {
+                  contains: filters.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                guestPhone: {
+                  contains: filters.search,
+                  mode: 'insensitive',
+                },
+              },
+            ]
+          : undefined,
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -269,13 +308,7 @@ export class ReservationsService {
     });
   }
 
-  async findOne(
-    id: string,
-    user?: {
-      userId: string;
-      role: string;
-    },
-  ) {
+  async findOne(id: string, user?: RequestUser) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
       include: {
@@ -293,7 +326,11 @@ export class ReservationsService {
       throw new NotFoundException('Reservation not found');
     }
 
-    if (user && user.role !== 'ADMIN' && reservation.userId !== user.userId) {
+    if (
+      user &&
+      user.role !== 'ADMIN' &&
+      reservation.userId !== this.getUserId(user)
+    ) {
       throw new ForbiddenException(
         'You are not allowed to access this reservation',
       );
@@ -430,10 +467,7 @@ export class ReservationsService {
 
   async reschedule(
     id: string,
-    user: {
-      userId: string;
-      role: string;
-    },
+    user: RequestUser,
     body: {
       reservationDate: string;
       startTime: string;
@@ -441,7 +475,7 @@ export class ReservationsService {
   ) {
     const reservation = await this.findOne(id);
 
-    if (user.role !== 'ADMIN' && reservation.userId !== user.userId) {
+    if (user.role !== 'ADMIN' && reservation.userId !== this.getUserId(user)) {
       throw new ForbiddenException(
         'You are not allowed to reschedule this reservation',
       );
@@ -514,16 +548,10 @@ export class ReservationsService {
     });
   }
 
-  async cancel(
-    id: string,
-    user: {
-      userId: string;
-      role: string;
-    },
-  ) {
+  async cancel(id: string, user: RequestUser) {
     const reservation = await this.findOne(id);
 
-    if (user.role !== 'ADMIN' && reservation.userId !== user.userId) {
+    if (user.role !== 'ADMIN' && reservation.userId !== this.getUserId(user)) {
       throw new ForbiddenException(
         'You are not allowed to cancel this reservation',
       );
