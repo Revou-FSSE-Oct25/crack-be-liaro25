@@ -36,7 +36,10 @@ export class ReservationsController {
     status: 201,
     description: 'Reservation created successfully',
   })
-  create(@Request() req: any, @Body() body: CreateReservationDto) {
+  create(
+    @Request() req: any,
+    @Body() body: CreateReservationDto,
+  ) {
     return this.reservationsService.create(body, req.user?.userId);
   }
 
@@ -90,7 +93,10 @@ export class ReservationsController {
     status: 404,
     description: 'Reservation not found',
   })
-  update(@Param('id') id: string, @Body() body: UpdateReservationDto) {
+  update(
+    @Param('id') id: string,
+    @Body() body: UpdateReservationDto,
+  ) {
     return this.reservationsService.update(id, body);
   }
 
