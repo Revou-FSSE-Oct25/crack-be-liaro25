@@ -37,6 +37,13 @@ export class OrdersController {
     return this.ordersService.create(body);
   }
 
+  @Post('my')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create order for my reservation' })
+  createMyOrder(@Request() req: any, @Body() body: CreateOrderDto) {
+    return this.ordersService.createMyOrder(req.user.userId, body);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

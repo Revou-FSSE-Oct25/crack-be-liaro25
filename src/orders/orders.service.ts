@@ -28,7 +28,9 @@ export class OrdersService {
     }
 
     if (reservation.order) {
-      throw new BadRequestException('Order already exists for this reservation');
+      throw new BadRequestException(
+        'Order already exists for this reservation',
+      );
     }
 
     if (!body.items || body.items.length === 0) {
@@ -186,25 +188,50 @@ export class OrdersService {
   }
 
   async findMyOrders(userId: string) {
-  return this.prisma.order.findMany({
-    where: {
-      reservation: {
-        userId,
-      },
-    },
-    include: {
-      reservation: true,
-      items: {
-        include: {
-          menuItem: true,
-          menuPackage: true,
+    return this.prisma.order.findMany({
+      where: {
+        reservation: {
+          userId,
         },
       },
-      payments: true,
+      include: {
+        reservation: true,
+        items: {
+          include: {
+            menuItem: true,
+            menuPackage: true,
+          },
+        },
+        payments: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async createMyOrder(
+    userId: string,
+    body: {
+      reservationId: string;
+      items: {
+        menuItemId?: string;
+        menuPackageId?: string;
+        quantity: number;
+      }[];
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-}
+  ) {
+    const reservation = await this.prisma.reservation.findFirst({
+      where: {
+        id: body.reservationId,
+        userId,
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    return this.create(body);
+  }
 }
