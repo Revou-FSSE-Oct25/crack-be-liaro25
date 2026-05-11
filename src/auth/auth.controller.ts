@@ -90,9 +90,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current logged in user' })
-  me(@Request() req: any) {
+  async me(@Request() req: any) {
+    const user = await this.authService.getProfile(req.user.userId);
+
     return {
-      user: req.user,
+      user,
     };
   }
 }
