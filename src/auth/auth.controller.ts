@@ -1,8 +1,23 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Request,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -24,7 +39,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Login user and return JWT token' })
+  @ApiOperation({ summary: 'Login user and set HttpOnly cookie' })
   @ApiResponse({
     status: 200,
     description: 'Login successful',
@@ -33,7 +48,51 @@ export class AuthController {
     status: 401,
     description: 'Invalid credentials',
   })
-  login(@Body() body: LoginDto) {
-    return this.authService.login(body);
+  async login(
+    @Body() body: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(body);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    res.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/',
+      maxAge: 1000 * 60 * 60 * 24,
+    });
+
+    return {
+      message: result.message,
+      user: result.user,
+    };
+  }
+
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout user and clear cookie' })
+  logout(@Res({ passthrough: true }) res: Response) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/',
+    });
+
+    return {
+      message: 'Logout successful',
+    };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current logged in user' })
+  me(@Request() req: any) {
+    return {
+      user: req.user,
+    };
   }
 }

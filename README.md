@@ -19,11 +19,11 @@ The backend API has been deployed using Railway.
 
 ### Frontend Deployment
 
-- Frontend URL: Coming soon
+- Frontend URL: [Under Construction](https://whiskandwonder.vercel.app/)
 
 ### Presentation
 
-- Canva Presentation: Coming soon
+- Canva Presentation: [Under Construction]
 
 ---
 
