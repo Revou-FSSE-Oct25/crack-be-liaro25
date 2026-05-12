@@ -74,6 +74,9 @@ model User {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
   reservations Reservation[]
 
   @@map("users")
@@ -124,11 +127,13 @@ model ReservationTable {
 }
 
 model MenuItem {
-  id       String     @id @default(uuid())
-  name     String
-  category String
-  price    Decimal
-  status   MenuStatus @default(available)
+  id          String     @id @default(uuid())
+  name        String
+  category    String
+  price       Decimal
+  status      MenuStatus @default(available)
+  description String?
+  imageUrl    String?
 
   packageItems PackageItem[]
   orderItems   OrderItem[]
@@ -137,10 +142,12 @@ model MenuItem {
 }
 
 model MenuPackage {
-  id     String     @id @default(uuid())
-  name   String
-  price  Decimal
-  status MenuStatus @default(available)
+  id          String     @id @default(uuid())
+  name        String
+  price       Decimal
+  status      MenuStatus @default(available)
+  description String?
+  imageUrl    String?
 
   packageItems PackageItem[]
   orderItems   OrderItem[]
