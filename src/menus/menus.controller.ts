@@ -20,6 +20,10 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { CreateMenuItemDto } from './dto/create-menu-item.dto';
+import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
+import { CreateMenuPackageDto } from './dto/create-menu-package.dto';
+import { UpdateMenuPackageDto } from './dto/update-menu-package.dto';
 
 @ApiTags('Menus')
 @ApiBearerAuth()
@@ -67,14 +71,7 @@ export class MenusController {
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Create a new menu item' })
   @ApiResponse({ status: 201, description: 'Menu item created successfully' })
-  createMenuItem(
-    @Body()
-    body: {
-      name: string;
-      category: string;
-      price: number;
-    },
-  ) {
+  createMenuItem(@Body() body: CreateMenuItemDto) {
     return this.menusService.createMenuItem(body);
   }
 
@@ -84,16 +81,7 @@ export class MenusController {
   @ApiOperation({ summary: 'Update menu item' })
   @ApiResponse({ status: 200, description: 'Menu item updated successfully' })
   @ApiResponse({ status: 404, description: 'Menu item not found' })
-  updateMenuItem(
-    @Param('id') id: string,
-    @Body()
-    body: Partial<{
-      name: string;
-      category: string;
-      price: number;
-      status: 'available' | 'unavailable';
-    }>,
-  ) {
+  updateMenuItem(@Param('id') id: string, @Body() body: UpdateMenuItemDto) {
     return this.menusService.updateMenuItem(id, body);
   }
 
@@ -136,13 +124,7 @@ export class MenusController {
     status: 201,
     description: 'Menu package created successfully',
   })
-  createMenuPackage(
-    @Body()
-    body: {
-      name: string;
-      price: number;
-    },
-  ) {
+  createMenuPackage(@Body() body: CreateMenuPackageDto) {
     return this.menusService.createMenuPackage(body);
   }
 
@@ -157,12 +139,7 @@ export class MenusController {
   @ApiResponse({ status: 404, description: 'Menu package not found' })
   updateMenuPackage(
     @Param('id') id: string,
-    @Body()
-    body: Partial<{
-      name: string;
-      price: number;
-      status: 'available' | 'unavailable';
-    }>,
+    @Body() body: UpdateMenuPackageDto,
   ) {
     return this.menusService.updateMenuPackage(id, body);
   }

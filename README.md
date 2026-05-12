@@ -23,7 +23,7 @@ The backend API has been deployed using Railway.
 
 ### Presentation
 
-- Canva Presentation: [Under Construction]
+- Canva Presentation: [\[Under Construction\]](https://canva.link/whisknwonder)
 
 ---
 

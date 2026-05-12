@@ -11,12 +11,16 @@ export class MenusService {
     name: string;
     category: string;
     price: number;
+    description?: string;
+    imageUrl?: string;
   }) {
     return this.prisma.menuItem.create({
       data: {
         name: body.name.trim(),
         category: body.category.trim(),
         price: body.price,
+        description: body.description?.trim(),
+        imageUrl: body.imageUrl?.trim(),
       },
     });
   }
@@ -72,6 +76,9 @@ export class MenusService {
             : {},
         ],
       },
+      orderBy: {
+        name: 'asc',
+      },
     });
   }
 
@@ -94,6 +101,8 @@ export class MenusService {
       category: string;
       price: number;
       status: 'available' | 'unavailable';
+      description: string;
+      imageUrl: string;
     }>,
   ) {
     await this.findOneMenuItem(id);
@@ -105,6 +114,8 @@ export class MenusService {
         category: body.category?.trim(),
         price: body.price,
         status: body.status,
+        description: body.description?.trim(),
+        imageUrl: body.imageUrl?.trim(),
       },
     });
   }
@@ -122,11 +133,18 @@ export class MenusService {
 
   // MENU PACKAGES
 
-  async createMenuPackage(body: { name: string; price: number }) {
+  async createMenuPackage(body: {
+    name: string;
+    price: number;
+    description?: string;
+    imageUrl?: string;
+  }) {
     return this.prisma.menuPackage.create({
       data: {
         name: body.name.trim(),
         price: body.price,
+        description: body.description?.trim(),
+        imageUrl: body.imageUrl?.trim(),
       },
     });
   }
@@ -157,6 +175,8 @@ export class MenusService {
       name: string;
       price: number;
       status: 'available' | 'unavailable';
+      description: string;
+      imageUrl: string;
     }>,
   ) {
     await this.findOneMenuPackage(id);
@@ -167,6 +187,8 @@ export class MenusService {
         name: body.name?.trim(),
         price: body.price,
         status: body.status,
+        description: body.description?.trim(),
+        imageUrl: body.imageUrl?.trim(),
       },
     });
   }
