@@ -9,6 +9,7 @@ import {
 
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -17,6 +18,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -51,20 +53,12 @@ export class UsersController {
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Update authenticated user profile' })
+  @ApiBody({ type: UpdateProfileDto })
   @ApiResponse({
     status: 200,
     description: 'User profile updated successfully',
   })
-  updateProfile(
-    @Request() req: any,
-    @Body()
-    body: {
-      name?: string;
-      phone?: string;
-      address?: string;
-      dateOfBirth?: string;
-    },
-  ) {
+  updateProfile(@Request() req: any, @Body() body: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.userId, body);
   }
 }
