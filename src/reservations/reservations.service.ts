@@ -303,7 +303,17 @@ export class ReservationsService {
             table: true,
           },
         },
-        order: true,
+        order: {
+          include: {
+            items: {
+              include: {
+                menuItem: true,
+                menuPackage: true,
+              },
+            },
+            payments: true,
+          },
+        },
       },
     });
   }
@@ -318,7 +328,17 @@ export class ReservationsService {
             table: true,
           },
         },
-        order: true,
+        order: {
+          include: {
+            items: {
+              include: {
+                menuItem: true,
+                menuPackage: true,
+              },
+            },
+            payments: true,
+          },
+        },
       },
     });
 
@@ -588,5 +608,95 @@ export class ReservationsService {
     return this.prisma.reservation.delete({
       where: { id },
     });
+  }
+
+  async createWithOrder(body: any, userId: string) {
+    const reservation = await this.create(
+      {
+        guestName: body.guestName,
+        guestEmail: body.guestEmail,
+        guestPhone: body.guestPhone,
+        reservationDate: body.reservationDate,
+        startTime: body.startTime,
+        guestCount: body.guestCount,
+      },
+      userId,
+    );
+
+    if (!body.items || body.items.length === 0) {
+      return reservation;
+    }
+
+    let subtotal = 0;
+
+    const orderItemsData = await Promise.all(
+      body.items.map(async (item: any) => {
+        if (item.menuItemId) {
+          const menuItem = await this.prisma.menuItem.findUnique({
+            where: { id: item.menuItemId },
+          });
+
+          if (!menuItem) {
+            throw new NotFoundException('Menu item not found');
+          }
+
+          subtotal += Number(menuItem.price) * item.quantity;
+
+          return {
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            price: menuItem.price,
+          };
+        }
+
+        if (item.menuPackageId) {
+          const menuPackage = await this.prisma.menuPackage.findUnique({
+            where: { id: item.menuPackageId },
+          });
+
+          if (!menuPackage) {
+            throw new NotFoundException('Menu package not found');
+          }
+
+          subtotal += Number(menuPackage.price) * item.quantity;
+
+          return {
+            menuPackageId: item.menuPackageId,
+            quantity: item.quantity,
+            price: menuPackage.price,
+          };
+        }
+
+        throw new BadRequestException('Invalid order item');
+      }),
+    );
+
+    const tax = subtotal * 0.1;
+    const totalAmount = subtotal + tax;
+
+    const order = await this.prisma.order.create({
+      data: {
+        reservationId: reservation.id,
+        subtotal,
+        tax,
+        totalAmount,
+        items: {
+          create: orderItemsData,
+        },
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: true,
+            menuPackage: true,
+          },
+        },
+      },
+    });
+
+    return {
+      ...reservation,
+      order,
+    };
   }
 }

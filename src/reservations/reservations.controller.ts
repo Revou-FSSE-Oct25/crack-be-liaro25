@@ -25,6 +25,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
+import { CreateReservationWithOrderDto } from './dto/create-reservation-with-order.dto';
 
 @ApiTags('Reservations')
 @ApiBearerAuth()
@@ -43,6 +44,21 @@ export class ReservationsController {
     return this.reservationsService.create(
       body,
       req.user?.userId ?? req.user?.id,
+    );
+  }
+
+  @Post('with-order')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Create reservation with order items',
+  })
+  createWithOrder(
+    @Body() body: CreateReservationWithOrderDto,
+    @Request() req: any,
+  ) {
+    return this.reservationsService.createWithOrder(
+      body,
+      req.user.userId ?? req.user.id,
     );
   }
 
