@@ -65,9 +65,16 @@ export class PaymentsService {
           status: 'confirmed',
         },
       });
-    }
 
-    return payment;
+      await this.prisma.reservation.update({
+        where: {
+          id: order.reservationId,
+        },
+        data: {
+          status: 'confirmed',
+        },
+      });
+    }
   }
 
   findAll() {
@@ -127,30 +134,30 @@ export class PaymentsService {
   }
 
   async findMyPayments(userId: string) {
-  return this.prisma.payment.findMany({
-    where: {
-      order: {
-        reservation: {
-          userId,
+    return this.prisma.payment.findMany({
+      where: {
+        order: {
+          reservation: {
+            userId,
+          },
         },
       },
-    },
-    include: {
-      order: {
-        include: {
-          reservation: true,
-          items: {
-            include: {
-              menuItem: true,
-              menuPackage: true,
+      include: {
+        order: {
+          include: {
+            reservation: true,
+            items: {
+              include: {
+                menuItem: true,
+                menuPackage: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-}
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }
