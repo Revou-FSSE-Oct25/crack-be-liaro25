@@ -3,10 +3,10 @@
 ![NestJS](https://img.shields.io/badge/NestJS-Backend-red)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue)
-![JWT](https://img.shields.io/badge/Auth-JWT-green)
+![JWT](https://img.shields.io/badge/Auth-HttpOnly%20JWT-green)
 ![Railway](https://img.shields.io/badge/Deploy-Railway-purple)
 
-A production-oriented RESTful backend API for a luxury afternoon tea reservation and ordering platform built with NestJS, Prisma ORM, PostgreSQL, and JWT authentication.
+A production-oriented RESTful backend API for a luxury afternoon tea reservation and ordering platform built with NestJS, Prisma ORM, PostgreSQL, and JWT authentication with HttpOnly cookie support.
 
 The backend powers customer reservations, ordering workflows, payment management, and role-based admin operations for the Whisk & Wonder hospitality platform.
 
@@ -42,7 +42,7 @@ A[Frontend - Next.js] --> B[REST API - NestJS]
 B --> C[Prisma ORM]
 C --> D[(PostgreSQL - Supabase)]
 
-B --> E[JWT Authentication]
+B --> E[HttpOnly Cookie JWT Auth]
 B --> F[Swagger API Docs]
 
 ```
@@ -77,9 +77,9 @@ flowchart TD
 A[User Login]
 --> B[JWT Token Generated]
 
-B --> C[Protected Routes]
+B --> C[JWT Stored in HttpOnly Cookie]
 
-C --> D{Role Check}
+C --> D[Protected Routes]
 
 D -->|ADMIN| E[Admin Dashboard]
 D -->|CUSTOMER| F[Customer Dashboard]
@@ -108,7 +108,7 @@ RESERVATION ||--o{ RESERVATION_TABLE : uses
 
 ## Authentication & Security
 
-- JWT Authentication
+- JWT Authentication with HttpOnly Cookies
 - Role-Based Authorization
 - Protected Routes using Guards
 - Password Hashing with bcrypt
@@ -329,10 +329,15 @@ src
 
 # Authentication & Authorization
 
-The backend uses JWT-based authentication with route protection using Guards and role-based authorization.
+The backend uses JWT-based authentication with HttpOnly cookie support and role-based route protection.
+
+After login, the access token is stored in an HttpOnly cookie to reduce exposure to client-side JavaScript. The JWT strategy also supports Bearer token fallback for API testing through Swagger or Postman.
 
 Security layers include:
 
+- HttpOnly cookie-based JWT authentication
+- Cookie-first JWT extraction
+- Optional Bearer token fallback
 - JwtAuthGuard
 - OptionalJwtAuthGuard
 - RolesGuard
@@ -488,9 +493,9 @@ https://whiskandwonder.up.railway.app/api
 
 ---
 
-# Frontend Repository
+# Frontend Deployment
 
-Frontend system:
+Frontend application:
 
 https://whiskandwonder.vercel.app
 
@@ -510,7 +515,7 @@ https://whiskandwonder.vercel.app
 - ✅ PostgreSQL Database Integration Completed
 - ✅ Swagger Documentation Completed
 - ✅ Railway Deployment Completed
-- ✅ Final Testing & Refinement In Progress
+- ✅ Production-ready MVP Completed
 
 ---
 
