@@ -5,12 +5,33 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue)
 ![JWT](https://img.shields.io/badge/Auth-HttpOnly%20JWT-green)
 ![Railway](https://img.shields.io/badge/Deploy-Railway-purple)
+![Jest](https://img.shields.io/badge/Tested_with-Jest-C21325?logo=jest)
+![Coverage](https://img.shields.io/badge/Coverage-82%25-brightgreen)
 
 A production-oriented RESTful backend API for a luxury afternoon tea reservation and ordering platform built with NestJS, Prisma ORM, PostgreSQL, and JWT authentication with HttpOnly cookie support.
 
 The backend powers customer reservations, ordering workflows, payment management, and role-based admin operations for the Whisk & Wonder hospitality platform.
 
 ---
+
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Deployment Links](#deployment-links)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [System Architecture](#system-architecture)
+- [Reservation Flow](#reservation-flow)
+- [Authentication Flow](#authentication-flow)
+- [API Documentation](#api-module)
+- [Authentication](#authentication)
+- [Reservation System](#reservation-system)
+- [Testing](#testing)
+- [Environment Variables](#environment-variables)
+- [Installation](#installation)
+- [Available Scripts](#available-scripts)
+- [Deployment Architecture](#deployment-architecture)
 
 # Deployment Links
 
@@ -213,48 +234,108 @@ RESERVATION ||--o{ RESERVATION_TABLE : uses
 
 # Deployment Architecture
 
-Frontend (Next.js + Vercel)
+```mermaid
+flowchart TD
 
-↓ REST API Communication
+A[Frontend - Next.js<br/>Vercel]
+--> B[Backend API - NestJS<br/>Railway]
 
-Backend API (NestJS + Railway)
+B --> C[Prisma ORM]
 
-↓ ORM Layer
+C --> D[(PostgreSQL<br/>Supabase)]
 
-Prisma ORM
+B --> E[JWT Auth<br/>HttpOnly Cookies]
 
-↓ Database Layer
+B --> F[Swagger API Docs]
+```
 
-PostgreSQL (Supabase)
-
----
-
-# Project Structure
+## Project Structure
 
 ```txt
 src
+├── app.controller.spec.ts
+├── app.controller.ts
+├── app.module.ts
+├── app.service.spec.ts
+├── app.service.ts
 ├── auth
+│   ├── auth.controller.spec.ts
+│   ├── auth.controller.ts
+│   ├── auth.module.ts
+│   ├── auth.service.spec.ts
+│   ├── auth.service.ts
 │   ├── dto
+│   │   ├── login.dto.ts
+│   │   └── register.dto.ts
 │   ├── jwt-auth.guard.ts
 │   ├── jwt.strategy.ts
 │   ├── optional-jwt-auth.guard.ts
 │   ├── roles.decorator.ts
 │   └── roles.guard.ts
 ├── dashboard
+│   ├── dashboard.controller.spec.ts
+│   ├── dashboard.controller.ts
+│   ├── dashboard.module.ts
+│   ├── dashboard.service.spec.ts
+│   └── dashboard.service.ts
+├── main.ts
 ├── menus
-│   └── dto
+│   ├── dto
+│   │   ├── create-menu-item.dto.ts
+│   │   ├── create-menu-package.dto.ts
+│   │   ├── update-menu-item.dto.ts
+│   │   └── update-menu-package.dto.ts
+│   ├── menus.controller.spec.ts
+│   ├── menus.controller.ts
+│   ├── menus.module.ts
+│   ├── menus.service.spec.ts
+│   └── menus.service.ts
 ├── orders
-│   └── dto
+│   ├── dto
+│   │   ├── create-order.dto.ts
+│   │   └── update-order-status.dto.ts
+│   ├── orders.controller.spec.ts
+│   ├── orders.controller.ts
+│   ├── orders.module.ts
+│   ├── orders.service.spec.ts
+│   └── orders.service.ts
 ├── payments
-│   └── dto
+│   ├── dto
+│   │   └── create-payment.dto.ts
+│   ├── payments.controller.spec.ts
+│   ├── payments.controller.ts
+│   ├── payments.module.ts
+│   ├── payments.service.spec.ts
+│   └── payments.service.ts
 ├── prisma
+│   ├── prisma.module.ts
+│   └── prisma.service.ts
 ├── reservations
-│   └── dto
+│   ├── dto
+│   │   ├── create-reservation-with-order.dto.ts
+│   │   ├── create-reservation.dto.ts
+│   │   └── update-reservation.dto.ts
+│   ├── reservations.controller.spec.ts
+│   ├── reservations.controller.ts
+│   ├── reservations.module.ts
+│   ├── reservations.service.spec.ts
+│   └── reservations.service.ts
 ├── tables
-├── users
-│   └── dto
-├── app.module.ts
-└── main.ts
+│   ├── tables.controller.spec.ts
+│   ├── tables.controller.ts
+│   ├── tables.module.ts
+│   ├── tables.service.spec.ts
+│   └── tables.service.ts
+└── users
+    ├── dto
+    │   └── update-profile.dto.ts
+    ├── users.controller.spec.ts
+    ├── users.controller.ts
+    ├── users.module.ts
+    ├── users.service.spec.ts
+    └── users.service.ts
+
+16 directories, 66 files
 ```
 
 ---
@@ -466,6 +547,85 @@ The backend system has been tested using:
 - Service & Controller Spec Files
 
 ---
+
+## Unit Testing
+
+This project includes unit testing using Jest for both service and controller layers.
+
+### Testing Stack
+
+- Jest
+- ts-jest
+- @nestjs/testing
+
+### Run All Tests
+
+```bash
+npm run test
+```
+
+### Run Coverage Report
+
+```bash
+npm run test:cov
+```
+
+### Current Coverage
+
+| Metric     | Coverage |
+| ---------- | -------- |
+| Statements | 82.11%   |
+| Branches   | 77.42%   |
+| Functions  | 88.81%   |
+| Lines      | 83.81%   |
+
+## Coverage Report
+
+![Backend Coverage](docs/XX.IMAGE//backend-coverage.png)
+
+### Test Summary
+
+- 18 Test Suites Passed
+- 133 Tests Passed
+- 0 Snapshot Failures
+
+### Tested Modules
+
+#### Service Layer
+
+- AuthService
+- ReservationsService
+- OrdersService
+- PaymentsService
+- MenusService
+- TablesService
+- UsersService
+- DashboardService
+
+#### Controller Layer
+
+- AuthController
+- ReservationsController
+- OrdersController
+- PaymentsController
+- MenusController
+- TablesController
+- UsersController
+- DashboardController
+
+### Testing Features Covered
+
+- Authentication logic
+- Reservation validation
+- Table allocation logic
+- Reservation rescheduling & cancellation
+- Order subtotal & tax calculation
+- Payment processing & refund flow
+- User profile updates
+- Dashboard summary aggregation
+- Authorization & role validation
+- Controller-service interaction
+- Error handling scenarios
 
 # Demo Accounts
 
